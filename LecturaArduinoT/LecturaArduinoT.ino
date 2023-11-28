@@ -2,6 +2,7 @@
 este programa demuestra el uso del las interrupciones generadas por un timer para manejar el 
 conversor analógico digital manejando los registros del microcontrolador
 */
+#include <TimerOne.h>
 
 #define pulsadorPin 2 // Pin del pulsador de habilitar y desabilitar muestreo
 #define LED 13        // Led de control
@@ -21,13 +22,15 @@ void setup(){
   pinMode(LED, OUTPUT); 
   attachInterrupt(digitalPinToInterrupt(pulsadorPin), SPlotter, RISING); //defino interrupcion externa para frenar o iniciar el muestreo
   config_ADC();
+  cli();
   config_timer1();
+  sei();
   Serial.begin(2000000);
 }
   
 void loop(){
   //La función que detecta si se ha presionado una tecla se ejecuta continuamente
-  imprime_ADC();
+  
 }
 
 void config_ADC(void){
@@ -39,24 +42,18 @@ void config_ADC(void){
   }
 
 void config_timer1(void){
-  TCCR1A = TCCR1B = 0;//ELIMINAR CUALQUIE CONF PREVIA DEL TIMER
-  TCNT1 = 0;//Borro cualquier conteo o valor previo
-
-  OCR1B = 999;//  SE COMPARA el timer 1 CONTRA 999 CONTEOS...con el fin de obtener 5 us, OCRB=(16MHz/prescaler * frecuencia maxima querida) - 1
-  TCCR1B |= (1 << WGM12);  //se configuro el timer 1 en modo de comparación CTC
-  TIMSK1 |= (1 << OCIE1B); //habilito la interrupción por comparación del timer 1 en el modo B.
-  TCCR1B |= (1<<CS11);  //preescalador de 8
+  Timer1.initialize(1000); //establece intervalo de disparo del time
+  Timer1.attachInterrupt (timer1_Isr); //establece la funcion asociada al disparo del timer
+  TCNT1=0;
   }
  
   /*** Interrupt routine ADC ***/
-ISR(TIMER1_COMPB_vect) //Interrupt Service Routine, es la interrupcion generada por el timer
-{
-  TCNT1=0;
-}
+
   
-ISR(ADC_vect) {       //interrupcion del ADC disparada por el timer
+void timer1_Isr() {       //interrupcion del ADC disparada por el timer
   result_adc = ADCL;        // guarda los bytes bajo del ADC
   result_adc += ADCH << 8;  // guarda los bytes altos ADC
+  imprime_ADC();
 }
 
 

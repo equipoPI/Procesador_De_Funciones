@@ -5,7 +5,7 @@ conversor analógico digital manejando los registros del microcontrolador
 
 #define pulsadorPin 2 // Pin del pulsador de habilitar y desabilitar muestreo
 #define LED 13        // Led de control
-volatile boolean habilitarADC = true; // Variable para habilitar o deshabilitar el ADC
+volatile boolean habilitarADC = false; // Variable para habilitar o deshabilitar el ADC
 int result_adc;  //resultado del conversor analógico digital.
 
 void imprime_ADC(void);   //funcion encargada de enviar por el puerto seriel los datos obtenidos

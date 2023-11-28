@@ -1,8 +1,10 @@
 //Escalera R2R en el puerto D (pin 2 a 9 de Arduino)
 #include <avr/io.h>
 #include <avr/interrupt.h>
+// utilizamos la libreria para conrolar e timer 3
 #include <TimerThree.h>
 
+//valores asociados a la señal de salida senoidal
 const PROGMEM byte R2R_sSenoidal[256] =
 {
   0x80, 0x83, 0x86, 0x89, 0x8c, 0x8f, 0x92, 0x95, 0x98, 0x9c, 0x9f, 0xa2, 0xa5, 0xa8, 0xab, 0xae,
@@ -23,6 +25,7 @@ const PROGMEM byte R2R_sSenoidal[256] =
   0x4f, 0x51, 0x54, 0x57, 0x5a, 0x5d, 0x60, 0x63, 0x67, 0x6a, 0x6d, 0x70, 0x73, 0x76, 0x79, 0x7c
 };
 
+//valores asociados a la señal de salida cuadrada
 const PROGMEM byte R2R_sCuadrada[256] =
 {
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -43,6 +46,7 @@ const PROGMEM byte R2R_sCuadrada[256] =
   0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
 };
 
+//valores asociados a la señal de salida dientes de sierra
 const PROGMEM byte R2R_sDSierra[256] =
 {
   0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
@@ -63,6 +67,7 @@ const PROGMEM byte R2R_sDSierra[256] =
   0xf0, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7, 0xf8, 0xf9, 0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff
 };
 
+//valores asociados a la señal de salida dientes de sierra invertida
 const PROGMEM byte R2R_sInvDSierra[256] =
 {
   0xff, 0xfe, 0xfd, 0xfc, 0xfb, 0xfa, 0xf9, 0xf8, 0xf7, 0xf6, 0xf5, 0xf4, 0xf3, 0xf2, 0xf1, 0xf0,
@@ -83,6 +88,7 @@ const PROGMEM byte R2R_sInvDSierra[256] =
   0x0f, 0x0e, 0x0d, 0x0c, 0x0b, 0x0a, 0x09, 0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01, 0x00,
 };
 
+//valores asociados a la señal de salida trianguar
 const PROGMEM byte R2R_sTriangular[256] =
 {
   0x00, 0x02, 0x04, 0x06, 0x08, 0x0a, 0x0c, 0x0e, 0x10, 0x12, 0x14, 0x16, 0x18, 0x1a, 0x1c, 0x1e,
@@ -103,6 +109,7 @@ const PROGMEM byte R2R_sTriangular[256] =
   0x1f, 0x1d, 0x1b, 0x19, 0x17, 0x15, 0x13, 0x11, 0x0f, 0x0f, 0x0b, 0x09, 0x07, 0x05, 0x03, 0x01
 };
 
+/*
 const PROGMEM byte R2R_sECG[256] =
 {
   73, 74, 75, 75, 74, 73, 73, 73, 73, 72, 71, 69, 68, 67, 67, 67,
@@ -122,144 +129,100 @@ const PROGMEM byte R2R_sECG[256] =
   67, 67, 66, 66, 66, 65, 65, 65, 65, 65, 65, 65, 65, 64, 64, 63,
   63, 64, 64, 65, 65, 65, 65, 65, 65, 65, 64, 64, 64, 64, 64, 64,
   64, 64, 65, 65, 65, 66, 67, 68, 69, 71, 72, 73
-};
+};*/
 
 //Pin 2 para variar el tipo de funcion
 //Pin 11 para variar la frecuencia de la señal
+//Cada uno se conecta a un pulsador
 
 #define pFUNCION 2
 #define pFRECUENCIA 19
 
-volatile int func = 0;
-volatile int freq = 7;
+volatile int func = 0;  //funcion de inicio
+volatile int freq = 7;  //frecuencia de inicio
 volatile uint8_t x = 0; // Índice para la tabla de búsqueda
 
 void setup() {
-  // Configura los pines 2del puerto A como salidas usando registros, pin 22 al 29
+  // Configura los pines del puerto A como salidas usando registros, pin 22 al 29
   DDRA = 0b11111111;
 
-  // Configura pines de interrupciones
+  //Configura pines de interrupciones
   pinMode(pFUNCION, INPUT);
   pinMode(pFRECUENCIA, INPUT);
 
+ //Definimmos la funciones de interrupcion
   attachInterrupt(digitalPinToInterrupt(pFUNCION), cFuncion, RISING);
   attachInterrupt(digitalPinToInterrupt(pFRECUENCIA), cFrecuencia, RISING);
 
-  // Configuracion del timer1
+  // Configuracion del timer3
   cli(); // Deshabilita las interrupciones
-  seteoTimer3();
+  seteoTimer3(); //funcion especifica para configurar el funcionamiento de timer3
   sei(); // Habilita las interrupciones
 
   // Configuro pines y puerto de comunicacion para ver la señal
 }
 
 void loop() {
-
-  /* switch (func) {
-    case 0:
-     for (int x = 0; x < 256; x++) {
-       PORTA = pgm_read_word(&R2R_sSenoidal[x]);
-       delayMicroseconds(freq);
-     }
-     break;
-    case 1:
-     for (int x = 0; x < 256; x++) {
-       PORTA = pgm_read_word(&R2R_sCuadrada[x]);
-       delayMicroseconds(freq);
-     }
-     break;
-    case 2:
-     for (int x = 0; x < 256; x++) {
-       PORTA = pgm_read_word(&R2R_sDSierra[x]);
-       delayMicroseconds(freq);
-     }
-     break;
-    case 3:
-     for (int x = 0; x < 256; x++) {
-       PORTA = pgm_read_word(&R2R_sInvDSierra[x]);
-       delayMicroseconds(freq);
-     }
-     break;
-    case 4:
-     for (int x = 0; x < 256; x++) {
-       PORTA = pgm_read_word(&R2R_sTriangular[x]);
-       delayMicroseconds(freq);
-     }
-     break;
-    case 5:
-     for (int x = 0; x < 256; x++) {
-       PORTA = pgm_read_word(&R2R_sECG[x]);
-       delayMicroseconds(freq);
-     }
-     break;
-    default:
-     break;
-    }*/
 }
 
-void cFuncion() {
-  if (func >= 5) {
+void cFuncion() { //funcion para controlar la forma de la señal de salida
+  if (func >= 4) {
     func = 0; // Si llega a 5, reinicia a 0
   } else {
     func++; // Cambia la función
   }
 }
 
-void cFrecuencia() {
-  if (freq >= 1000) {
-    freq = 7; // Si llega a 2 kHz, reinicia a 100 Hz
+void cFrecuencia() { //control de la fracuencia de saida de la señal
+  if (freq >= 4000) { // Si llega a 1 Hz, reinicia a 512 Hz aprox
+    freq = 7; 
     Timer3.initialize(freq);
   }
   else {
-    freq += 50; // Aumenta la frecuencia en pasos de 100 Hz
+    freq += 50; // Aumenta la frecuencia 
     Timer3.initialize(freq);
   }
 }
-//si no funciona poner void dentr de los parentesis
-void seteoTimer3() {
-  Timer3.initialize(freq);
-  Timer3.attachInterrupt (timer3_Isr);
+
+//funcion capaz de configurar el funcionamento del timer, se invoca en el setup del programa y cada vez que se actualiza la variable freq
+void seteoTimer3() {  
+  Timer3.initialize(freq); //establece intervalo de disparo del time
+  Timer3.attachInterrupt (timer3_Isr); //establece la funcion asociada al disparo del timer
 }
 
+//funcion que se ejecuta cada vez que se dispara el timer 3
 void timer3_Isr() {
-  switch (func) {
+  switch (func) { //en base a el valor de la variable func decide que se ejecuta y que no
     case 0:
-      PORTA = pgm_read_byte(&R2R_sSenoidal[x]);
+      PORTA = pgm_read_byte(&R2R_sSenoidal[x]); //imprime en el puerto A el valor exadecimal asociado al valor de la variable x
       x++;
       if (x >= 256) {
         x = 0;
       }
       break;
     case 1:
-      PORTA = pgm_read_byte(&R2R_sCuadrada[x]);
+      PORTA = pgm_read_byte(&R2R_sCuadrada[x]); //imprime en el puerto A el valor exadecimal asociado al valor de la variable x
       x++;
       if (x >= 256) {
         x = 0;
       }
       break;
     case 2:
-      PORTA = pgm_read_byte(&R2R_sTriangular[x]);
+      PORTA = pgm_read_byte(&R2R_sTriangular[x]); //imprime en el puerto A el valor exadecimal asociado al valor de la variable x
       x++;
       if (x >= 256) {
         x = 0;
       }
       break;
     case 3:
-      PORTA = pgm_read_byte(&R2R_sInvDSierra[x]);
+      PORTA = pgm_read_byte(&R2R_sInvDSierra[x]); //imprime en el puerto A el valor exadecimal asociado al valor de la variable x
       x++;
       if (x >= 256) {
         x = 0;
       }
       break;
     case 4:
-      PORTA = pgm_read_byte(&R2R_sDSierra[x]);
-      x++;
-      if (x >= 256) {
-        x = 0;
-      }
-      break;
-    case 5:
-      PORTA = pgm_read_byte(&R2R_sECG[x]);
+      PORTA = pgm_read_byte(&R2R_sDSierra[x]); //imprime en el puerto A el valor exadecimal asociado al valor de la variable x
       x++;
       if (x >= 256) {
         x = 0;
@@ -269,65 +232,3 @@ void timer3_Isr() {
       break;
   }
 }
-
-/*void seteoTimer1() {
-  TCCR1A = 0; // Borra la configuración anterior
-  TCCR1B = 0; // Borra la configuración anterior
-  TCNT1 = 0; // Inicializa el contador a 0
-  TCCR1B |= (1 << WGM12); // Modo CTC (Clear Timer on Compare Match)
-  int prescaler = 8; // Selecciona el preescalador apropiad 8
-  OCR1A = F_CPU / (prescaler * freq) - 1; // Establece el valor de comparación para la frecuencia deseada
-  TIMSK1 |= (1 << OCIE1A); // Habilita la interrupción por comparación
-  TCCR1B |= (1 << CS11); //preescalador de 8
-  }
-
-  ISR(TIMER1_COMPA_vect) {
-  // Esta función se llama cada vez que el temporizador alcanza el valor de comparación (controla la frecuencia)
-  // Cambia el valor de PORTA según la tabla de búsqueda de la función seleccionada
-    switch (func) {
-    case 0:
-      PORTA = pgm_read_byte(&R2R_sSenoidal[x]);
-      x++;
-      if (x >= 256) {
-        x = 0;
-      }
-      break;
-    case 1:
-      PORTA = pgm_read_byte(&R2R_sCuadrada[x]);
-      x++;
-      if (x >= 256) {
-        x = 0;
-      }
-      break;
-    case 2:
-      PORTA = pgm_read_byte(&R2R_sDSierra[x]);
-      x++;
-      if (x >= 256) {
-        x = 0;
-      }
-      break;
-    case 3:
-      PORTA = pgm_read_byte(&R2R_sInvDSierra[x]);
-      x++;
-      if (x >= 256) {
-        x = 0;
-      }
-      break;
-    case 4:
-      PORTA = pgm_read_byte(&R2R_sTriangular[x]);
-      x++;
-      if (x >= 256) {
-        x = 0;
-      }
-      break;
-    case 5:
-      PORTA = pgm_read_byte(&R2R_sECG[x]);
-      x++;
-      if (x >= 256) {
-        x = 0;
-      }
-      break;
-    default:
-      break;
-  }
-  }*/

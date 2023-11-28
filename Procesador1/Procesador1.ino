@@ -77,11 +77,11 @@ ISR(ADC_vect) {       //interrupcion del ADC disparada por el timer
 
 //si no funciona poner void dentr de los parentesis
 void seteoTimer3() {
-  Timer3.initialize(7);
+  Timer3.initialize(10);
   Timer3.attachInterrupt (timer3_Isr);
 }
 
 void timer3_Isr() {
-  x = map (result_adc,162,777,0,256);
+  x = map (result_adc,152,777,0,256);
   PORTA = pgm_read_byte(&R2R_Funcion[x]);
 }
